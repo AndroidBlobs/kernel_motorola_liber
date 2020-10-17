@@ -3243,8 +3243,8 @@ static int cam_ife_mgr_reset(void *hw_mgr_priv, void *hw_reset_args)
 		list) {
 		rc = cam_ife_hw_mgr_reset_csid_res(hw_mgr_res);
 		if (rc) {
-			CAM_ERR(CAM_ISP, "Failed RESET (%d) rc:%d",
-				hw_mgr_res->res_id, rc);
+			CAM_ERR(CAM_ISP, "Failed RESET (%d)",
+				hw_mgr_res->res_id);
 			goto end;
 		}
 	}
@@ -4408,7 +4408,6 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 end:
 	return rc;
 }
-
 
 static int cam_ife_mgr_sof_irq_debug(
 	struct cam_ife_hw_mgr_ctx *ctx,
