@@ -168,6 +168,7 @@ void *diag_ipc_log;
 #endif
 
 static void diag_md_session_close(int pid);
+extern uint16_t md_support;
 
 /*
  * Returns the next delayed rsp id. If wrapping is enabled,
@@ -1501,6 +1502,15 @@ static void diag_md_session_close(int pid)
 	kfree(session_info);
 	session_info = NULL;
 	DIAG_LOG(DIAG_DEBUG_USERSPACE, "cleared up session\n");
+}
+
+static int diag_ioctl_md_support_list(unsigned long ioarg)
+{
+	if (copy_to_user((void __user *)ioarg, &md_support,
+			sizeof(md_support)))
+		return -EFAULT;
+	else
+		return 0;
 }
 
 struct diag_md_session_t *diag_md_session_get_pid(int pid)
@@ -2887,6 +2897,10 @@ long diagchar_compat_ioctl(struct file *filp,
 		else
 			result = 0;
 		break;
+	case DIAG_IOCTL_MD_SUPPORT_LIST:
+		result = diag_ioctl_md_support_list(ioarg);
+
+		break;
 	case DIAG_IOCTL_QUERY_MD_PID:
 		if (copy_from_user((void *)&pid_query, (void __user *)ioarg,
 				   sizeof(pid_query))) {
@@ -3064,6 +3078,9 @@ long diagchar_ioctl(struct file *filp,
 		else
 			result = 0;
 		break;
+	case DIAG_IOCTL_MD_SUPPORT_LIST:
+		result = diag_ioctl_md_support_list(ioarg);
+		break;
 	}
 	return result;
 }
@@ -3105,10 +3122,12 @@ wait_for_buffer:
 	wait_event_interruptible(driver->hdlc_wait_q,
 			(data->flushed == 0));
 	spin_lock_irqsave(&driver->diagmem_lock, flags);
+
 	if (data->flushed) {
 		spin_unlock_irqrestore(&driver->diagmem_lock, flags);
 		goto wait_for_buffer;
 	}
+
 	if (!data->buf) {
 		data->buf = diagmem_alloc(driver, DIAG_MAX_HDLC_BUF_SIZE +
 					APF_DIAG_PADDING,
@@ -3153,14 +3172,17 @@ wait_for_buffer:
 			ret = -EIO;
 			goto fail_free_buf;
 		}
+
 wait_for_agg_buff:
 		wait_event_interruptible(driver->hdlc_wait_q,
 			(data->flushed == 0));
 		spin_lock_irqsave(&driver->diagmem_lock, flags);
+
 		if (data->flushed) {
 			spin_unlock_irqrestore(&driver->diagmem_lock, flags);
 			goto wait_for_agg_buff;
 		}
+
 		data->buf = diagmem_alloc(driver, DIAG_MAX_HDLC_BUF_SIZE +
 					APF_DIAG_PADDING,
 					 POOL_TYPE_HDLC);
@@ -3230,14 +3252,17 @@ static int diag_process_apps_data_non_hdlc(unsigned char *buf, int len,
 		       __func__, buf, len);
 		return -EIO;
 	}
+
 wait_for_buffer:
 	wait_event_interruptible(driver->hdlc_wait_q,
 			(data->flushed == 0));
 	spin_lock_irqsave(&driver->diagmem_lock, flags);
+
 	if (data->flushed) {
 		spin_unlock_irqrestore(&driver->diagmem_lock, flags);
 		goto wait_for_buffer;
 	}
+
 	if (!data->buf) {
 		data->buf = diagmem_alloc(driver, DIAG_MAX_HDLC_BUF_SIZE +
 					APF_DIAG_PADDING,
